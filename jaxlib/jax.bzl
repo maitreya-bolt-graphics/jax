@@ -71,6 +71,7 @@ loops_visibility = []
 PLATFORM_TAGS_DICT = {
     ("Linux", "x86_64"): ("manylinux_2_27", "x86_64"),
     ("Linux", "aarch64"): ("manylinux_2_27", "aarch64"),
+    ("Linux", "riscv64"): ("linux", "riscv64"),
     ("Linux", "ppc64le"): ("manylinux2014", "ppc64le"),
     ("Darwin", "x86_64"): ("macosx_11_0", "x86_64"),
     ("Darwin", "arm64"): ("macosx_11_0", "arm64"),
@@ -630,6 +631,7 @@ def jax_wheel(
             Label("//jaxlib/tools:win_amd64"): "AMD64",
             Label("//jaxlib/tools:linux_aarch64"): "aarch64",
             Label("//jaxlib/tools:linux_x86_64"): "x86_64",
+            Label("//jaxlib/tools:linux_riscv64"): "riscv64",
         }),
         source_files = source_files,
     )

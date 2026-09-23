@@ -126,6 +126,14 @@ selects.config_setting_group(
     ],
 )
 
+selects.config_setting_group(
+    name = "linux_riscv64",
+    match_all = [
+        "@platforms//cpu:riscv64",
+        "@platforms//os:linux",
+    ],
+)
+
 # Flags for the new wheel build rules.
 
 string_flag(

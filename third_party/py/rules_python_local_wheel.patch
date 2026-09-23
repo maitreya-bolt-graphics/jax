@@ -79,7 +79,7 @@ index 18fb7f8c..c480fae1 100644
              whl = whl,
              whl_modifications = whl_modifications,
          )
-+        if not whl.srcs and local_wheel:
++        if local_wheel:
 +            for target_platform in sorted(platforms):
 +                src = struct(
 +                    distribution = whl.name,
