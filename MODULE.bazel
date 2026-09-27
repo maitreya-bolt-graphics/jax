@@ -186,7 +186,7 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_depen
         "libtpu": "dist/libtpu-*.whl",  # On CI, we use the downloaded nightly version of libtpu.
         "ml_dtypes": "patches/ml_dtypes/ml_dtypes-*.whl",
         "numpy": "patches/numpy/numpy-*.whl",  # On TSAN CI, we use a custom TSAN-instrumented NumPy wheel.
-        "scipy": "dist/scipy-*.whl",
+        "scipy": "third_party/py/wheels/scipy-*.whl",
     },
     python_version = python_version,
     requirements_by_platform = {} if python_version in [
