@@ -1,0 +1,11 @@
+--- a/python/private/pypi/extension.bzl
++++ a/python/private/pypi/extension.bzl
+@@ -75,7 +75,7 @@
+     platforms = {}
+ 
+     # Linux platforms
+-    for cpu in ["x86_64", "aarch64"]:
++    for cpu in ["x86_64", "aarch64", "riscv64"]:
+         for freethreaded in ["", "_freethreaded"]:
+             platform_name = "linux_{}{}".format(cpu, freethreaded)
+             platforms[platform_name] = {

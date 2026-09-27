@@ -109,3 +109,15 @@
  }
  
  absl::StatusOr<EmbeddedConstantBuffers> CreateEmbeddedConstantBuffers(
+
+--- xla/backends/cpu/codegen/ir_compiler.cc
++++ xla/backends/cpu/codegen/ir_compiler.cc
+@@ -394,6 +394,8 @@
+       device_type = xla::codegen::intrinsics::DeviceType::kIntelCpu;
+     }
+   } else if (target_triple.isAArch64() || target_triple.isARM()) {
+     device_type = xla::codegen::intrinsics::DeviceType::kArmCpu;
++  } else if (target_triple.isRISCV()) {
++    device_type = xla::codegen::intrinsics::DeviceType::kIntelCpu;
+   } else if (target_triple.isSystemZ()) {
+     device_type = xla::codegen::intrinsics::DeviceType::kSystemZCpu;
