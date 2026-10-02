@@ -1,0 +1,7 @@
+--- a/python/private/pypi/extension.bzl
++++ b/python/private/pypi/extension.bzl
+@@ -77,3 +77,3 @@
+     # Linux platforms
+-    for cpu in ["x86_64", "aarch64"]:
++    for cpu in ["x86_64", "aarch64", "riscv64"]:
+         for freethreaded in ["", "_freethreaded"]:

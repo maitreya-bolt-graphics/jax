@@ -19,9 +19,11 @@
 
 import argparse
 import asyncio
+import glob
 import logging
 import os
 import platform
+import re
 import sys
 import copy
 
@@ -32,6 +34,75 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+def _locked_version(package: str, python_version: str) -> str:
+  """Returns the version of `package` pinned in the lock file for python_version."""
+  suffix = python_version.replace(".", "_").replace("-ft", "_ft")
+  lock_path = os.path.join(
+      os.path.dirname(os.path.abspath(__file__)),
+      f"requirements_lock_{suffix}.txt",
+  )
+  major, minor = (int(x) for x in python_version.removesuffix("-ft").split(".")[:2])
+  pattern = re.compile(
+      rf"^{re.escape(package)}==(\S+)"
+      r"(?:\s*;\s*python_full_version\s*(<|>=)\s*'(\d+)\.(\d+)[^']*')?"
+  )
+  with open(lock_path) as f:
+    for line in f:
+      m = pattern.match(line)
+      if not m:
+        continue
+      version, op, m_major, m_minor = m.groups()
+      if op is None:
+        return version
+      bound = (int(m_major), int(m_minor))
+      if (op == "<" and (major, minor) < bound) or (
+          op == ">=" and (major, minor) >= bound
+      ):
+        return version
+  raise RuntimeError(f"{package} is not pinned in {lock_path}")
+
+
+async def build_wheel_from_source(
+    executor: command.SubprocessExecutor,
+    package: str,
+    python_version: str,
+    output_path: str,
+    dry_run: bool,
+    detailed_timestamped_log: bool,
+) -> None:
+  """Builds `package` from source at the version pinned in the lock file."""
+  version = _locked_version(package, python_version)
+  os.makedirs(output_path, exist_ok=True)
+  wheel_glob = os.path.join(
+      output_path, f"{package.replace('-', '_')}-{version}-*.whl"
+  )
+  existing_wheels = glob.glob(wheel_glob)
+  if existing_wheels:
+    logger.info("Using existing wheel: %s", existing_wheels[0])
+    return
+
+  build_command = command.CommandBuilder(sys.executable)
+  build_command.append("-m")
+  build_command.append("pip")
+  build_command.append("wheel")
+  build_command.append(f"--no-binary={package}")
+  build_command.append("--no-cache-dir")
+  build_command.append("--no-deps")
+  build_command.append(f"{package}=={version}")
+  build_command.append("--wheel-dir")
+  build_command.append(output_path)
+
+  logger.info("Building %s==%s from source...", package, version)
+  result = await executor.run(
+      build_command.get_command_as_string(),
+      dry_run,
+      detailed_timestamped_log,
+  )
+  if result.return_code != 0:
+    raise RuntimeError(f"Failed to build {package}=={version} from source")
+
 
 BANNER = r"""
      _   _  __  __
@@ -720,6 +791,16 @@ async def main():
   if args.configure_only:
     logging.info("--configure_only is set so not running any Bazel commands.")
   else:
+    for package in ("ml-dtypes", "numpy", "scipy"):
+      await build_wheel_from_source(
+          executor,
+          package,
+          args.python_version,
+          args.output_path,
+          args.dry_run,
+          args.detailed_timestamped_log,
+      )
+
     # Wheel build command execution
     for wheel in wheels:
       output_path = args.output_path

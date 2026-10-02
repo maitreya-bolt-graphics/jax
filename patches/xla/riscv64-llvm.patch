@@ -1,0 +1,89 @@
+--- xla/codegen/intrinsic/cpp/BUILD
++++ xla/codegen/intrinsic/cpp/BUILD
+@@ -24,4 +24,5 @@
+     "if_llvm_system_z_available",
+     "if_llvm_x86_available",
++    "if_llvm_riscv_available",
+ )
+ load(":cc_to_llvm_ir.bzl", "cc_ir_header")
+@@ -63,7 +64,9 @@
+         "TF_LLVM_S390X_AVAILABLE=1",
+     ]) + if_llvm_x86_available([
+         "TF_LLVM_X86_AVAILABLE=1",
+-    ]),
++    ]) + if_llvm_riscv_available([
++        "TF_LLVM_RISCV_AVAILABLE=1",
++    ]),
+     deps = [
+         "//xla/util:embedded_constant_buffers",
+         "@com_google_absl//absl/status:statusor",
+@@ -86,3 +89,5 @@
+         "@llvm-project//llvm:X86CodeGen",
+-    ]),
++    ]) + if_llvm_riscv_available([
++        "@llvm-project//llvm:RISCVCodeGen",
++    ]),
+ )
+--- xla/codegen/intrinsic/cpp/embed_bitcode.cc
++++ xla/codegen/intrinsic/cpp/embed_bitcode.cc
+@@ -183,6 +183,12 @@
+   LLVMInitializeSystemZTargetMC();
+   LLVMInitializeSystemZAsmPrinter();
+ #endif
++#if TF_LLVM_RISCV_AVAILABLE
++  LLVMInitializeRISCVTargetInfo();
++  LLVMInitializeRISCVTarget();
++  LLVMInitializeRISCVTargetMC();
++  LLVMInitializeRISCVAsmPrinter();
++#endif
+ #if TF_LLVM_X86_AVAILABLE
+   LLVMInitializeX86TargetInfo();
+   LLVMInitializeX86Target();
+--- xla/util/embedded_constant_buffers.cc
++++ xla/util/embedded_constant_buffers.cc
+@@ -23,6 +23,7 @@
+ #include <optional>
+ #include <string>
+ #include <utility>
++#include <vector>
+ 
+ #include "absl/memory/memory.h"
+ #include "absl/status/status.h"
+@@ -30,6 +31,7 @@
+ #include "absl/status/statusor.h"
+ #include "absl/strings/str_cat.h"
+ #include "absl/strings/str_format.h"
++#include "absl/strings/str_join.h"
+ #include "absl/strings/string_view.h"
+ #include "absl/types/span.h"
+ #include "llvm/ADT/ArrayRef.h"
+@@ -45,6 +47,7 @@
+ #include "llvm/Support/raw_ostream.h"
+ #include "llvm/Target/TargetMachine.h"
+ #include "llvm/Target/TargetOptions.h"
++#include "llvm/TargetParser/Host.h"
+ #include "llvm/TargetParser/Triple.h"
+ #include "xla/backends/cpu/alignment.h"
+ #include "xla/service/llvm_ir/llvm_type_conversion_util.h"
+@@ -125,9 +128,20 @@
+     return Internal("TargetRegistry::lookupTarget failed: %s", error.c_str());
+   }
+ 
++  std::string features;
++  if (normalized_triple.isRISCV()) {
++    std::vector<std::string> host_features;
++    for (const auto& entry : llvm::sys::getHostCPUFeatures()) {
++      if (entry.getValue()) {
++        host_features.push_back("+" + entry.getKey().str());
++      }
++    }
++    features = absl::StrJoin(host_features, ",");
++  }
++
+   return absl::WrapUnique(target->createTargetMachine(
+       normalized_triple, /*CPU=*/"",
+-      /*Features=*/"", llvm::TargetOptions(), std::nullopt));
++      /*Features=*/features, llvm::TargetOptions(), std::nullopt));
+ }
+ 
+ absl::StatusOr<EmbeddedConstantBuffers> CreateEmbeddedConstantBuffers(
